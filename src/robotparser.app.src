@@ -1,0 +1,12 @@
+{application, robotparser,
+ [
+  {description, "Parser for robots.txt"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { robotparser, []}},
+  {env, []}
+ ]}.

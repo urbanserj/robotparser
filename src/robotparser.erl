@@ -135,8 +135,8 @@ match_url(U, _Url) ->
 	U#'User-Agent'.delay.
 
 
--spec add_rule([#'User-Agent'{}], rule_t() | {'delay', integer()} |
-		{'agent', binary()}) -> [#'User-Agent'{}].
+-spec add_rule([#'User-Agent'{}], rule_t() | {'agent', binary()} |
+	{'delay', undefined | integer()}) -> [#'User-Agent'{}].
 add_rule(Us, {agent, UA}) ->
 	[#'User-Agent'{agent=UA}|Us];
 add_rule([], _) ->
@@ -163,7 +163,7 @@ strip_binary(<<" ", Bin/binary>>, head) ->
 strip_binary(Bin, tail) ->
 	case binary:last(Bin) of
 		32 ->
-			Bin2 = binary:part(Bin, {0, byte_size(Bin)-1}),
+			Bin2 = binary:part(Bin, {0, byte_size(Bin) - 1}),
 			strip_binary(Bin2, tail);
 		_  ->
 			Bin

@@ -55,42 +55,38 @@ parse(Text) ->
 
 
 -spec parse_lines([binary()], [#'User-Agent'{}]) -> #robotparser{}.
-parse_lines([], L) ->
-	RL = [U#'User-Agent'{ rules = sort(U#'User-Agent'.rules) } || U <- L],
+parse_lines([], Us) ->
+	RL = [U#'User-Agent'{ rules = sort(U#'User-Agent'.rules) } || U <- Us],
 	#robotparser{list = lists:reverse(RL)};
-parse_lines([<<>>|Lines], L) ->
+parse_lines([<<>>|Lines], Us) ->
 	% skip empty
-	parse_lines(Lines, L);
-parse_lines([<<$#, _/binary>>|Lines], L) ->
+	parse_lines(Lines, Us);
+parse_lines([<<$#, _/binary>>|Lines], Us) ->
 	% skip comments
-	parse_lines(Lines, L);
-parse_lines([Line|Lines], L) ->
+	parse_lines(Lines, Us);
+parse_lines([Line|Lines], Us) ->
 	% try to match "Directive: Value"
-	[D|R] = re:split(Line, <<"\s*:\s*">>),
-	case R of
-		[] ->
-			parse_lines(Lines, L);
+	[D|R] = binary:split(Line, <<":">>, [trim]),
+	Ds = strip_binary(D, tail),
+	try strip_binary(hd(R), head) of
+		<<>> ->
+			parse_lines(Lines, Us);
+		Rs when Ds =:= <<"user-agent">> ->
+			parse_lines(Lines, add_rule(Us, {agent, Rs}));
+		Rs when Ds =:= <<"disallow">> ->
+			parse_lines(Lines, add_rule(Us, {disallow, is_pattern(Rs)}));
+		Rs when Ds =:= <<"allow">> ->
+			parse_lines(Lines, add_rule(Us, {allow, is_pattern(Rs)}));
+		Rs when Ds =:= <<"crawl-delay">> ->
+			Delay = binary_to_integer(Rs),
+			parse_lines(Lines, add_rule(Us, {delay, Delay}));
 		_ ->
-			Rs = hd(R),
-			case D of
-				<<"user-agent">> ->
-					UA = case Rs of <<>> -> <<$*>>; _ -> Rs end,
-					parse_lines(Lines, [#'User-Agent'{agent=UA} | L]);
-				<<"disallow">> when L =/= [] ->
-					[U|Ls] = L,
-					parse_lines(Lines, [U#'User-Agent'{rules=[{disallow, is_pattern(Rs)}|U#'User-Agent'.rules]} | Ls]);
-				<<"allow">> when L =/= [] ->
-					[U|Ls] = L,
-					parse_lines(Lines, [U#'User-Agent'{rules=[{allow, is_pattern(Rs)}|U#'User-Agent'.rules]} | Ls]);
-				<<"crawl-delay">> when L =/= [] ->
-					[U|Ls] = L,
-					case binary_to_integer(Rs) of
-						undefined -> parse_lines(Lines, [U|Ls]);
-						X -> parse_lines(Lines, [U#'User-Agent'{delay=X} | Ls])
-					end;
-				_ ->
-					parse_lines(Lines, L)
-			end
+			parse_lines(Lines, Us)
+	catch
+		_:_ when Ds =:= <<"user-agent">> ->
+			parse_lines(Lines, add_rule(Us, {agent, <<$*>>}));
+		_:_ ->
+			parse_lines(Lines, Us)
 	end.
 
 
@@ -139,31 +135,46 @@ match_url(U, _Url) ->
 	U#'User-Agent'.delay.
 
 
+-spec add_rule([#'User-Agent'{}], rule_t() | {'delay', integer()} |
+		{'agent', binary()}) -> [#'User-Agent'{}].
+add_rule(Us, {agent, UA}) ->
+	[#'User-Agent'{agent=UA}|Us];
+add_rule([], _) ->
+	[];
+add_rule(Us, {delay, undefined}) ->
+	Us;
+add_rule([U|Us], {delay, Delay}) ->
+	[U#'User-Agent'{delay=Delay}|Us];
+add_rule([U=#'User-Agent'{rules=Rules}|Us], Rule) ->
+	[U#'User-Agent'{rules=[Rule|Rules]}|Us].
+
 % utils
 
 -spec strip_binary(binary()) -> binary().
 strip_binary(Bin) ->
-	strip_binary(Bin, false).
+	Bin2 = strip_binary(Bin, head),
+	strip_binary(Bin2, tail).
 
--spec strip_binary(binary(), boolean()) -> binary().
-strip_binary(<<" ", Bin/binary>>, T) ->
-	strip_binary(Bin, T);
-strip_binary(Bin, false) ->
-	reverse_binary(strip_binary(reverse_binary(Bin), true));
-strip_binary(Bin, true) ->
+-spec strip_binary(binary(), 'head' | 'tail') -> binary().
+strip_binary(<<>>, _) ->
+	<<>>;
+strip_binary(<<" ", Bin/binary>>, head) ->
+	strip_binary(Bin, head);
+strip_binary(Bin, tail) ->
+	case binary:last(Bin) of
+		32 ->
+			Bin2 = binary:part(Bin, {0, byte_size(Bin)-1}),
+			strip_binary(Bin2, tail);
+		_  ->
+			Bin
+	end;
+strip_binary(Bin, _) ->
 	Bin.
 
 
 -spec remove_comments(binary()) -> binary().
 remove_comments(Bin) ->
 	hd(binary:split(Bin, <<$#>>)).
-
--spec reverse_binary(binary()) -> binary().
-reverse_binary(Bin) ->
-	Size = byte_size(Bin)*8,
-	<<T:Size/integer-little>> = Bin,
-	<<T:Size/integer-big>>.
-
 
 -spec lower_binary(binary()) -> binary().
 lower_binary(Str) when is_list(Str) ->

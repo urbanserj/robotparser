@@ -20,7 +20,7 @@
 %% THE SOFTWARE.
 
 -module(robotparser).
--export([parse/1, parse/2, is_allowed/2, is_allowed/3, to_lower/1]).
+-export([parse/1, parse/2, is_allowed/2, is_allowed/3]).
 
 -type url_t() :: binary() | {'pattern', binary()}.
 -type rule_t() :: {'allow' | 'disallow', url_t()}.

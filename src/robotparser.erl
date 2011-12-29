@@ -20,7 +20,7 @@
 %% THE SOFTWARE.
 
 -module(robotparser).
--export([parse/1, parse/2, is_allowed/2, is_allowed/3]).
+-export([parse/1, parse/2, is_allowed/2, is_allowed/3, to_lower/1]).
 
 -type url_t() :: binary() | {'pattern', binary()}.
 -type rule_t() :: {'allow' | 'disallow', url_t()}.
@@ -50,7 +50,7 @@ parse(Text, _Code) ->
 parse(Text) ->
 	% split lines
 	BinLines = binary:split(Text, [<<"\r\n">>, <<"\n">>, <<"\r">>, <<"\n\r">>], [global, trim]),
-	Lines = [strip_binary(lower_binary(remove_comments(X))) || X <- BinLines],
+	Lines = [strip_binary(to_lower(remove_comments(X))) || X <- BinLines],
 	parse_lines(Lines, []).
 
 
@@ -117,7 +117,7 @@ match_agent(Agent, Url, [L|Ls]) ->
 		nomatch when L#'User-Agent'.agent =/= <<"*">> ->
 			match_agent(Agent, Url, Ls);
 		_ ->
-			match_url(L, lower_binary(Url))
+			match_url(L, to_lower(Url))
 	end.
 
 
@@ -176,18 +176,11 @@ strip_binary(Bin, _) ->
 remove_comments(Bin) ->
 	hd(binary:split(Bin, <<$#>>)).
 
--spec lower_binary(binary()) -> binary().
-lower_binary(Str) when is_list(Str) ->
-	lower_binary(unicode:characters_to_binary(Str));
-lower_binary(Bin) ->
-	lower_binary(Bin, <<>>).
-
--spec lower_binary(binary(), binary()) -> binary().
-lower_binary(<<C:8, Bin/binary>>, Acc) ->
-	LC = lower(C),
-	lower_binary(Bin, <<Acc/binary, LC>>);
-lower_binary(_, Acc) ->
-	Acc.
+-spec to_lower(binary()) -> binary().
+to_lower(Str) when is_list(Str) ->
+	to_lower(unicode:characters_to_binary(Str));
+to_lower(Bin) ->
+	<< <<(lower(C))>> || <<C:8>> <= Bin >>.
 
 -spec lower(byte()) -> byte().
 lower($A) -> $a;

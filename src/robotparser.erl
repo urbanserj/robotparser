@@ -1,4 +1,4 @@
-%% Copyright (c) 2011 Sergey Urbanovich
+%% Copyright (c) 2011, 2012 Sergey Urbanovich
 %% http://github.com/urbanserj/robotparser
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,7 +37,9 @@
 
 -spec parse(binary(), integer()) -> #robotparser{}.
 parse(_Text, Code) when Code >= 500 ->
-	#robotparser{list = [#'User-Agent'{delay = false, rules = [{disallow, <<"/">>}]}]}; % 40x -> disallow
+	#robotparser{list =
+		[#'User-Agent'{delay = false, rules = [{disallow, <<"/">>}]}]
+	}; % 40x -> disallow
 parse(_Text, Code) when Code >= 400 ->
 	#robotparser{list = []};
 parse(Text, _Code) when byte_size(Text) > 262144 -> % 256kb
@@ -49,7 +51,8 @@ parse(Text, _Code) ->
 -spec parse(binary()) -> #robotparser{}.
 parse(Text) ->
 	% split lines
-	BinLines = binary:split(Text, [<<"\r\n">>, <<"\n">>, <<"\r">>, <<"\n\r">>], [global, trim]),
+	BinLines = binary:split(Text, [<<"\r\n">>, <<"\n">>,
+	                               <<"\n\r">>, <<"\r">>], [global, trim]),
 	Lines = [strip_binary(to_lower(remove_comments(X))) || X <- BinLines],
 	parse_lines(Lines, []).
 
@@ -109,7 +112,8 @@ is_allowed(Agent, Url, #robotparser{list = List}) ->
 	match_agent(list_to_binary(Agent), Url, List).
 
 
--spec match_agent(binary(), binary(), [#'User-Agent'{}]) -> integer() | boolean().
+-spec match_agent(binary(), binary(), [#'User-Agent'{}])
+		-> integer() | boolean().
 match_agent(_Agent, _Url, []) ->
 	true;
 match_agent(Agent, Url, [L|Ls]) ->
@@ -176,7 +180,7 @@ strip_binary(Bin, _) ->
 remove_comments(Bin) ->
 	hd(binary:split(Bin, <<$#>>)).
 
--spec to_lower(binary()) -> binary().
+-spec to_lower(binary() | string()) -> binary().
 to_lower(Str) when is_list(Str) ->
 	to_lower(unicode:characters_to_binary(Str));
 to_lower(Bin) ->

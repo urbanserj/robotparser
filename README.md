@@ -11,7 +11,7 @@ Usage
 	Eshell V5.8.3  (abort with ^G)
 	1> inets:start().
 	ok
-	2> {ok, {_, StatusCode, Data}} = httpc:request(get, {"http://example.org/robots.txt", []}, [], [{body_format,binary}]).
+	2> {ok, {{_, StatusCode, _}, _, Data}} = httpc:request(get, {"http://example.org/robots.txt", []}, [], [{body_format,binary}]).
 	{ok,{{"HTTP/1.1",200,"OK"},
 	     [{"server","tratata/1.0"}
 	      {"content-length","57"},

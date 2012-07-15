@@ -25,6 +25,10 @@
 -type url_t() :: binary() | {'pattern', binary()}.
 -type rule_t() :: {'allow' | 'disallow', url_t()}.
 
+-type url() :: binary() | string().
+-type agent() :: binary() | string().
+-type allowed() :: boolean() | non_neg_integer().
+
 -record('User-Agent', {
 	agent = <<"*">> :: binary(),
 	delay = true :: 'true' | integer(),
@@ -93,23 +97,29 @@ parse_lines([Line|Lines], Us) ->
 	end.
 
 
--spec is_allowed(string(), #robotparser{}) -> integer() | boolean().
-is_allowed(Url, Rb) ->
-	is_allowed("*", Url, Rb).
+-spec is_allowed(#robotparser{}, url()) -> allowed().
+is_allowed(Rb, Url) ->
+	is_allowed(Rb, Url, <<"*">>).
 
--spec is_allowed(string(), string(), #robotparser{}) -> integer() | boolean().
-is_allowed(_Agent, "/robots.txt", _Rb) ->
+-spec is_allowed(#robotparser{}, url(), agent() | undefined) -> allowed().
+is_allowed(Rb, Url, Agent) when is_list(Agent) ->
+	is_allowed(Rb, Url, list_to_binary(Agent));
+is_allowed(Rb, Url, Agent) ->
+	is_allowed_n(Rb, to_lower(Url), Agent).
+
+-spec is_allowed_n(#robotparser{}, url(), agent() | undefined) -> allowed().
+is_allowed_n(_Rb, <<"/robots.txt">>, _Agent) ->
 	true;
-is_allowed(Agent, "", Rb) ->
-	is_allowed(Agent, "/", Rb);
-is_allowed(Agent, [H|T], Rb) when H =/= $/ ->
-	is_allowed(Agent, [$/,H|T], Rb);
-is_allowed(Agent, Url, Rb)
-	when Agent =:= ""; Agent =:= undefined
-->
-	is_allowed("*", Url, Rb);
-is_allowed(Agent, Url, #robotparser{list = List}) ->
-	match_agent(list_to_binary(Agent), Url, List).
+is_allowed_n(Rb, <<"">>, Agent) ->
+	is_allowed_n(Rb, <<"/">>, Agent);
+is_allowed_n(Rb, <<H:8, _/binary>> = Url, Agent) when H =/= $/ ->
+	is_allowed_n(Rb, <<$/, Url/binary>>, Agent);
+is_allowed_n(Rb, Url, <<"">>) ->
+	is_allowed_n(Rb, Url, <<"*">>);
+is_allowed_n(Rb, Url, undefined) ->
+	is_allowed_n(Rb, Url, <<"*">>);
+is_allowed_n(#robotparser{list = List}, Url, Agent) ->
+	match_agent(Agent, Url, List).
 
 
 -spec match_agent(binary(), binary(), [#'User-Agent'{}])
@@ -121,7 +131,7 @@ match_agent(Agent, Url, [L|Ls]) ->
 		nomatch when L#'User-Agent'.agent =/= <<"*">> ->
 			match_agent(Agent, Url, Ls);
 		_ ->
-			match_url(L, to_lower(Url))
+			match_url(L, Url)
 	end.
 
 

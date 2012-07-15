@@ -1,62 +1,66 @@
 -module(robotparser_tests).
 -include_lib("eunit/include/eunit.hrl").
 
+-define(T(Expr), ?assert(Expr)).
+-define(F(Expr), ?assertNot(Expr)).
+-define(E(A, B), ?assertEqual(A, B)).
+
 disallow0_test() ->
 	Rb = robotparser:parse(<<"User-Agent: *\nDisallow: /\n">>),
-	false = Rb:is_allowed("/"),
-	false = Rb:is_allowed("path"),
-	false = Rb:is_allowed("//example.com/"),
-	false = Rb:is_allowed("?432").
+	?F(robotparser:is_allowed(Rb, "/")),
+	?F(robotparser:is_allowed(Rb, "path")),
+	?F(robotparser:is_allowed(Rb, "//example.com/")),
+	?F(robotparser:is_allowed(Rb, "?432")).
 
 disallow1_test() ->
 	Rb = robotparser:parse(<<>>),
-	true = Rb:is_allowed("/"),
-	true = Rb:is_allowed("path"),
-	true = Rb:is_allowed("//example.com/"),
-	true = Rb:is_allowed("?432").
+	?T(robotparser:is_allowed(Rb, "/")),
+	?T(robotparser:is_allowed(Rb, "path")),
+	?T(robotparser:is_allowed(Rb, "//example.com/")),
+	?T(robotparser:is_allowed(Rb, "?432")).
 
 disallow2_test() ->
 	Rb = robotparser:parse(<<"User-Agent: *\nDisallow: /test">>),
-	true = Rb:is_allowed("/tes"),
-	true = Rb:is_allowed("/"),
-	true = Rb:is_allowed("path"),
-	true = Rb:is_allowed("//example.com/"),
-	true = Rb:is_allowed("?432").
+	?T(robotparser:is_allowed(Rb, "/tes")),
+	?T(robotparser:is_allowed(Rb, "/")),
+	?T(robotparser:is_allowed(Rb, "path")),
+	?T(robotparser:is_allowed(Rb, "//example.com/")),
+	?T(robotparser:is_allowed(Rb, "?432")).
 
 disallow3_test() ->
 	Rb = robotparser:parse(<<"User-Agent: *\nDisallow:">>),
-	true = Rb:is_allowed("/foo/bar").
+	?T(robotparser:is_allowed(Rb, "/foo/bar")).
 
 allow_test() ->
 	Rb = robotparser:parse(<<"User-Agent: *\nAllow: /test\nDisallow: /t\nAllow: /tratata\nDisallow: /p">>),
-	true  = Rb:is_allowed("/test"),
-	false = Rb:is_allowed("/tra"),
-	true  = Rb:is_allowed("/tratata"),
-	true  = Rb:is_allowed("tratata"),
-	true  = Rb:is_allowed("at").
+	?T(robotparser:is_allowed(Rb, "/test")),
+	?F(robotparser:is_allowed(Rb, "/tra")),
+	?T(robotparser:is_allowed(Rb, "/tratata")),
+	?T(robotparser:is_allowed(Rb, "tratata")),
+	?T(robotparser:is_allowed(Rb, "at")).
 
 agent_test() ->
 	Rb = robotparser:parse(<<"User-Agent: bot\nDisallow: /">>),
-	false = Rb:is_allowed("bot", "/"),
-	false = Rb:is_allowed("testbot", "/"),
-	false = Rb:is_allowed("bottest", "/"),
-	true  = Rb:is_allowed("crawler", "/").
+	?F(robotparser:is_allowed(Rb, "/", "bot")),
+	?F(robotparser:is_allowed(Rb, "/", "testbot")),
+	?F(robotparser:is_allowed(Rb, "/", "bottest")),
+	?T(robotparser:is_allowed(Rb, "/", "crawler")).
 
 woroot_test() ->
 	Rb = robotparser:parse(<<"User-Agent: *\nDisallow: tra\nAllow: tratata\nAllow: foo*bar">>),
-	true = Rb:is_allowed("/tratata"),
-	true = Rb:is_allowed("/foo/tratata/bar"),
-	true = Rb:is_allowed("/foo/tra/bar"),
-	false = Rb:is_allowed("/trata").
+	?T(robotparser:is_allowed(Rb, "/tratata")),
+	?T(robotparser:is_allowed(Rb, "/foo/tratata/bar")),
+	?T(robotparser:is_allowed(Rb, "/foo/tra/bar")),
+	?F(robotparser:is_allowed(Rb, "/trata")).
 
 unicode_support_test() ->
 	Rb = robotparser:parse(unicode:characters_to_binary("User-Agent: *\nDisallow: /œ̃")),
-	false = Rb:is_allowed("/œ̃"),
-	true = Rb:is_allowed("/øœé").
+	?F(robotparser:is_allowed(Rb, "/œ̃")),
+	?T(robotparser:is_allowed(Rb, "/øœé")).
 
 delay_test() ->
 	Rb = robotparser:parse(<<"User-Agent: *\nCrawl-Delay: 10">>),
-	10 = Rb:is_allowed("/").
+	?E(robotparser:is_allowed(Rb, "/"), 10).
 
 agent_delay_test() ->
 	Rb = robotparser:parse(<<
@@ -68,10 +72,10 @@ User-Agent: bot
 Crawl-Delay: 5
 
 User-Agent: *">>),
-	false = Rb:is_allowed("crawler", "/search"),
-	10    = Rb:is_allowed("crawler", "/path"),
-	5     = Rb:is_allowed("bot", "/"),
-	true  = Rb:is_allowed("/").
+	?F(robotparser:is_allowed(Rb, "/search", "crawler")),
+	?E(robotparser:is_allowed(Rb, "/path", "crawler"), 10),
+	?E(robotparser:is_allowed(Rb, "/", "bot"), 5),
+	?T(robotparser:is_allowed(Rb, "/")).
 
 pattern_test() ->
 	Rb = robotparser:parse(<<
@@ -84,13 +88,13 @@ Allow: /pa*h$
 User-Agent: *
 Disallow: /
 Allow: /$">>),
-	false = Rb:is_allowed("/tratata"),
-	true  = Rb:is_allowed("/"),
-	true  = Rb:is_allowed("nlcrawler", "/path"),
-	true  = Rb:is_allowed("nlcrawler", "/pathtratata"),
-	true  = Rb:is_allowed("nlcrawler", "/patratatah"),
-	false = Rb:is_allowed("nlcrawler", "/pugh"),
-	false = Rb:is_allowed("nlcrawler", "/pughtratata").
+	?F(robotparser:is_allowed(Rb, "/tratata")),
+	?T(robotparser:is_allowed(Rb, "/")),
+	?T(robotparser:is_allowed(Rb, "/path", "nlcrawler")),
+	?T(robotparser:is_allowed(Rb, "/pathtratata", "nlcrawler")),
+	?T(robotparser:is_allowed(Rb, "/patratatah", "nlcrawler")),
+	?F(robotparser:is_allowed(Rb, "/pugh", "nlcrawler")),
+	?F(robotparser:is_allowed(Rb, "/pughtratata", "nlcrawler")).
 
 mix_test() ->
 	Robots_txt = <<"
@@ -109,12 +113,12 @@ Disallow: /harm/to/self
 User-Agent: user
 Allow: /">>,
 	Rb = robotparser:parse(Robots_txt),
-	false = Rb:is_allowed("bot/1.0", "/path"),
-	true  = Rb:is_allowed("testcrawler/1.1", "/"),
-	true  = Rb:is_allowed("tratata crawler/2.0", ""),
-	false = Rb:is_allowed("crawler/3.0", "/search?q=tratata"),
-	true  = Rb:is_allowed("tratata", "/"),
-	true  = Rb:is_allowed("user", "/").
+	?F(robotparser:is_allowed(Rb, "/path", "bot/1.0")),
+	?T(robotparser:is_allowed(Rb, "/", "testcrawler/1.1")),
+	?T(robotparser:is_allowed(Rb, "", "tratata crawler/2.0")),
+	?F(robotparser:is_allowed(Rb, "/search?q=tratata", "crawler/3.0")),
+	?T(robotparser:is_allowed(Rb, "/", "tratata")),
+	?T(robotparser:is_allowed(Rb, "/", "user")).
 
 comment_test() ->
 	Rb = robotparser:parse(<<
@@ -122,34 +126,38 @@ comment_test() ->
 Allow: /foo/bar # tratata
 Disallow: /foo # tratata
 # tratata">>),
-	false = Rb:is_allowed("/foo"),
-	true  = Rb:is_allowed("/foo/bar"),
-	true  = Rb:is_allowed("/").
+	?F(robotparser:is_allowed(Rb, "/foo")),
+	?T(robotparser:is_allowed(Rb, "/foo/bar")),
+	?T(robotparser:is_allowed(Rb, "/")).
 
 root_allow_test() ->
 	Rb = robotparser:parse(<<"User-Agent: *\nAllow: /\nDisallow: /foo\nDisallow: /bar">>),
-	true  = Rb:is_allowed("/"),
-	true  = Rb:is_allowed("/tratata"),
-	false = Rb:is_allowed("/foo"),
-	false = Rb:is_allowed("/bar").
+	?T(robotparser:is_allowed(Rb, "/")),
+	?T(robotparser:is_allowed(Rb, "/tratata")),
+	?F(robotparser:is_allowed(Rb, "/foo")),
+	?F(robotparser:is_allowed(Rb, "/bar")).
 
 empty_ua_test() ->
 	Rb0 = robotparser:parse(<<"User-Agent: *\nDisallow: /test">>),
-	false = Rb0:is_allowed("/test"),
+	?F(robotparser:is_allowed(Rb0, "/test")),
 	Rb1 = robotparser:parse(<<"User-Agent:\nDisallow: /test">>),
-	false = Rb1:is_allowed("/test").
+	?F(robotparser:is_allowed(Rb1, "/test")).
 
 code_test() ->
 	Text  = crypto:rand_bytes(4096),
 
 	Rb404 = robotparser:parse(Text, 404),
-	true  = Rb404:is_allowed("/"),
+	?T(robotparser:is_allowed(Rb404, "/")),
 
 	Rb403 = robotparser:parse(Text, 403),
-	true = Rb403:is_allowed("/"),
+	?T(robotparser:is_allowed(Rb403, "/")),
 
 	Rb503 = robotparser:parse(Text, 503),
-	false  = Rb503:is_allowed("/"),
+	?F(robotparser:is_allowed(Rb503, "/")),
 
 	RbR   = robotparser:parse(Text),
-	true  = RbR:is_allowed("/").
+	?T(robotparser:is_allowed(RbR, "/")).
+
+binary_test() ->
+	Rb = robotparser:parse(<<>>),
+	?T(robotparser:is_allowed(Rb, <<"/">>, <<"crawler">>)).

@@ -161,3 +161,22 @@ code_test() ->
 binary_test() ->
 	Rb = robotparser:parse(<<>>),
 	?T(robotparser:is_allowed(Rb, <<"/">>, <<"crawler">>)).
+
+ua_order_test() ->
+	Rb = robotparser:parse(<<"
+User-Agent: *
+Disallow: /
+
+User-Agent: bot
+Disallow: /a
+Disallow: /b
+
+User-Agent: googlebot
+Disallow: /a
+	">>),
+	?T(robotparser:is_allowed(Rb, <<"/">>, <<"googlebot">>)),
+	?T(robotparser:is_allowed(Rb, <<"/b">>, <<"googlebot">>)),
+	?F(robotparser:is_allowed(Rb, <<"/a">>, <<"googlebot">>)),
+	?F(robotparser:is_allowed(Rb, <<"/b">>, <<"bot">>)),
+	?F(robotparser:is_allowed(Rb, <<"/a">>, <<"bot">>)),
+	?F(robotparser:is_allowed(Rb, <<"/">>, <<"crawler">>)).

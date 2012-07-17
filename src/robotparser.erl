@@ -64,7 +64,7 @@ parse(Text) ->
 -spec parse_lines([binary()], [#'User-Agent'{}]) -> #robotparser{}.
 parse_lines([], Us) ->
 	RL = [U#'User-Agent'{ rules = sort(U#'User-Agent'.rules) } || U <- Us],
-	#robotparser{list = lists:reverse(RL)};
+	#robotparser{list = uasort(RL)};
 parse_lines([<<>>|Lines], Us) ->
 	% skip empty
 	parse_lines(Lines, Us);
@@ -303,3 +303,9 @@ sort(Rules) ->
 			false -> true
 		end
 	end, Rules ).
+
+-spec uasort([#'User-Agent'{}]) -> [#'User-Agent'{}].
+uasort(List) ->
+	lists:sort( fun(#'User-Agent'{agent=A}, #'User-Agent'{agent=B}) ->
+		byte_size(A) > byte_size(B)
+	end, List ).

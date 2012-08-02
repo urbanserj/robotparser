@@ -38,8 +38,11 @@
 	list = [] :: [#'User-Agent'{}]
 }).
 
+-type robotparser() :: #robotparser{}.
+-export_type([robotparser/0]).
 
--spec parse(binary(), integer()) -> #robotparser{}.
+
+-spec parse(binary(), integer()) -> robotparser().
 parse(_Text, Code) when Code >= 500 ->
 	#robotparser{list =
 		[#'User-Agent'{delay = false, rules = [{disallow, <<"/">>}]}]
@@ -52,7 +55,7 @@ parse(Text, _Code) ->
 	parse(Text).
 
 
--spec parse(binary()) -> #robotparser{}.
+-spec parse(binary()) -> robotparser().
 parse(Text) ->
 	% split lines
 	BinLines = binary:split(Text, [<<"\r\n">>, <<"\n">>,
@@ -61,7 +64,7 @@ parse(Text) ->
 	parse_lines(Lines, []).
 
 
--spec parse_lines([binary()], [#'User-Agent'{}]) -> #robotparser{}.
+-spec parse_lines([binary()], [#'User-Agent'{}]) -> robotparser().
 parse_lines([], Us) ->
 	RL = [U#'User-Agent'{ rules = sort(U#'User-Agent'.rules) } || U <- Us],
 	#robotparser{list = uasort(RL)};
@@ -97,17 +100,17 @@ parse_lines([Line|Lines], Us) ->
 	end.
 
 
--spec is_allowed(#robotparser{}, url()) -> allowed().
+-spec is_allowed(robotparser(), url()) -> allowed().
 is_allowed(Rb, Url) ->
 	is_allowed(Rb, Url, <<"*">>).
 
--spec is_allowed(#robotparser{}, url(), agent() | undefined) -> allowed().
+-spec is_allowed(robotparser(), url(), agent() | undefined) -> allowed().
 is_allowed(Rb, Url, Agent) when is_list(Agent) ->
 	is_allowed(Rb, Url, list_to_binary(Agent));
 is_allowed(Rb, Url, Agent) ->
 	is_allowed_n(Rb, to_lower(Url), Agent).
 
--spec is_allowed_n(#robotparser{}, url(), agent() | undefined) -> allowed().
+-spec is_allowed_n(robotparser(), url(), agent() | undefined) -> allowed().
 is_allowed_n(_Rb, <<"/robots.txt">>, _Agent) ->
 	true;
 is_allowed_n(Rb, <<"">>, Agent) ->

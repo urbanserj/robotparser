@@ -88,7 +88,7 @@ parse_lines([Line|Lines], Us) ->
 		Rs when Ds =:= <<"allow">> ->
 			parse_lines(Lines, add_rule(Us, {allow, is_pattern(Rs)}));
 		Rs when Ds =:= <<"crawl-delay">> ->
-			Delay = binary_to_integer(Rs),
+			Delay = safe_binary_to_integer(Rs),
 			parse_lines(Lines, add_rule(Us, {delay, Delay}));
 		_ ->
 			parse_lines(Lines, Us)
@@ -229,17 +229,11 @@ lower($Z) -> $z;
 lower(Char) -> Char.
 
 
--spec binary_to_integer(binary()) -> integer() | 'undefined'.
-binary_to_integer(Bin) ->
-	binary_to_integer(Bin, 0).
-
--spec binary_to_integer(binary(), integer()) -> integer() | 'undefined'.
-binary_to_integer(<<>>, Acc) ->
-	Acc;
-binary_to_integer(<<C:8, Bin/binary>>, Acc)
-	when C >= $0, C =< $9 -> binary_to_integer(Bin, Acc*10+C-$0);
-binary_to_integer(_Bin, _Acc) ->
-	undefined.
+-spec safe_binary_to_integer(binary()) -> integer() | 'undefined'.
+safe_binary_to_integer(Bin) ->
+    try binary_to_integer(Bin)
+    catch error:badarg -> undefined
+    end.
 
 -spec match(binary(), url_t()) -> boolean().
 match(Bin, {pattern, Pattern}) ->

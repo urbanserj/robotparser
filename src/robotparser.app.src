@@ -1,7 +1,7 @@
 {application, robotparser,
  [
   {description, "Parser for robots.txt"},
-  {vsn, "0.1.2"},
+  {vsn, "0.2"},
   {registered, []},
   {applications, [
                   kernel,
